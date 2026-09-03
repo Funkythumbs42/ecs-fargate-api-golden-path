@@ -24,7 +24,7 @@ import jetbrains.buildServer.configs.kotlin.triggers.vcs
 version = "2024.12"
 
 val awsRegion = "eu-west-1"
-val ecrRegistry = "123456789012.dkr.ecr.eu-west-1.amazonaws.com"
+val ecrRegistry = "784318225077.dkr.ecr.eu-west-1.amazonaws.com"
 
 fun safeId(name: String) = name.replace("-", "_")
 
@@ -74,15 +74,15 @@ project {
         param("ecr.registry", ecrRegistry)
     }
 
-    buildType(NewApi)
-    buildType(LocalChecks)
+    buildType(NewApi())
+    buildType(LocalChecks())
 
     loadServices().forEach { svc ->
         subProject(serviceProject(svc))
     }
 }
 
-object LocalChecks : BuildType({
+class LocalChecks : BuildType({
     id("LocalChecks")
     name = "local-checks"
     description = "Offline-ish: docker build of example-api + terraform fmt/validate."
@@ -100,7 +100,7 @@ object LocalChecks : BuildType({
     }
 })
 
-object NewApi : BuildType({
+class NewApi : BuildType({
     id("NewApi")
     name = "new-api"
     description = "FROM INCEPTION. Prompted name/port/preset. Scaffolds Terraform, Docker, Go, TeamCity pipelines; builds the first image. One click."
@@ -176,7 +176,7 @@ fun serviceProject(svc: String): Project {
             params {
                 param("service.name", svc)
                 param("aws.region", awsRegion)
-                param("aws.role.arn", "arn:aws:iam::123456789012:role/teamcity-${svc}-ci")
+                param("aws.role.arn", "arn:aws:iam::784318225077:role/teamcity-${svc}-ci")
                 param("ecr.registry", ecrRegistry)
                 param("ecr.repository", svc)
             }
@@ -213,7 +213,7 @@ fun serviceProject(svc: String): Project {
                 param("service.name", svc)
                 param("deploy.env", env)
                 param("aws.region", awsRegion)
-                param("aws.role.arn", "arn:aws:iam::123456789012:role/teamcity-${svc}-${env}")
+                param("aws.role.arn", "arn:aws:iam::784318225077:role/teamcity-${svc}-${env}")
                 param("env.SERVICE_NAME", svc)
                 param("env.DEPLOY_ENV", env)
             }
