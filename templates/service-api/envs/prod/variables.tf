@@ -1,4 +1,5 @@
 variable "service_name" { type = string }
+variable "environment" { type = string }
 variable "image_digest" {
   description = "sha256 digest from the build pipeline. CI overrides this with -var."
   type        = string
@@ -16,7 +17,10 @@ variable "health_check_path" {
   type    = string
   default = "/health"
 }
-variable "host_header" { type = string }
+variable "alb_internal" {
+  description = "false = internet-facing ALB in public subnets; true = internal ALB in private subnets."
+  type        = bool
+}
 variable "enable_execute_command" { type = bool }
 variable "log_retention_days" { type = number }
 variable "platform_state_bucket" { type = string }

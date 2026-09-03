@@ -1,3 +1,6 @@
+# Leftover for the live PoC stack. Not the product path.
+# New apps create their own ALB in modules/ecs-api (alb_internal).
+# Do not add count/for_each here: that would replace the running ALB.
 resource "aws_security_group" "alb" {
   name_prefix = "${var.name}-alb-"
   description = "Public ALB for ${var.name}"

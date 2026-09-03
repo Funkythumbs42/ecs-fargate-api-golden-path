@@ -49,3 +49,6 @@ backend.hcl
 
 # Local apply notes
 .deploy-dev-report.txt
+
+# Local-only compose (agent on docker bridge + AWS mounts). Do not commit.
+docker-compose.override.yml

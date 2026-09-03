@@ -1,40 +1,37 @@
 #!/usr/bin/env bash
-# Scaffold a new HTTP API from services/example-api.
-# Then in TeamCity: point settings.kts serviceName at it and Run "create (dev)".
+# Render templates/service-api into a destination directory (the future app repo).
+# Does NOT copy into factory services/. Factory example-api is the template source only.
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 NAME="${1:-${NAME:-}}"
-if [[ -z "$NAME" ]]; then
-  echo "usage: $0 <service-name>   (lowercase, DNS-safe, e.g. orders-api)" >&2
+DEST="${2:-}"
+if [[ -z "$NAME" || -z "$DEST" ]]; then
+  echo "usage: $0 <service-name> <dest-dir>   (lowercase, DNS-safe, e.g. orders-api)" >&2
   exit 1
 fi
 if [[ ! "$NAME" =~ ^[a-z][a-z0-9-]{1,30}[a-z0-9]$ ]]; then
   echo "service name must be 3-32 chars, start with a letter, lowercase alphanumeric plus hyphens" >&2
   exit 1
 fi
-SRC="$ROOT/services/example-api"
-DST="$ROOT/services/$NAME"
-if [[ -e "$DST" ]]; then
-  echo "already exists: $DST" >&2
+SRC="$ROOT/templates/service-api"
+if [[ ! -d "$SRC" ]]; then
+  echo "template missing: $SRC" >&2
+  exit 1
+fi
+if [[ -e "$DEST" && -n "$(ls -A "$DEST" 2>/dev/null || true)" ]]; then
+  echo "destination is not empty: $DEST" >&2
   exit 1
 fi
 
-cp -a "$SRC" "$DST"
-find "$DST" -type f -print0 | xargs -0 sed -i "s/example-api/${NAME}/g"
+mkdir -p "$DEST"
+# Copy including dotfiles (.teamcity, .gitignore, .dockerignore) but not . / ..
+shopt -s dotglob
+cp -a "$SRC"/. "$DEST"/
+shopt -u dotglob
+# Never copy terraform local state from a developer laptop into a new app.
+find "$DEST" -type d -name .terraform -prune -exec rm -rf {} +
+find "$DEST" -type f \( -name '*.tfstate' -o -name '*.tfstate.*' -o -name '.terraform.lock.hcl' \) -delete
 
-add_ecr() {
-  local f="$1"
-  grep -q "\"$NAME\"" "$f" && return 0
-  # Insert ", \"name\"" before the closing ] of ecr_repositories = [...]
-  sed -i "s/ecr_repositories[[:space:]]*=[[:space:]]*\\[\\(.*\\)\\]/ecr_repositories     = [\\1, \"$NAME\"]/" "$f"
-}
+find "$DEST" -type f -print0 | xargs -0 sed -i "s/example-api/${NAME}/g"
 
-for env in dev staging prod; do
-  add_ecr "$ROOT/platform/envs/$env/terraform.tfvars"
-done
-
-echo "scaffolded $DST"
-echo "next:"
-echo "  1. set serviceName = \"$NAME\" in .teamcity/settings.kts (or a copied TeamCity project)"
-echo "  2. commit"
-echo "  3. Run the one-click build: create (dev)"
+echo "scaffolded $DEST from templates/service-api for $NAME"

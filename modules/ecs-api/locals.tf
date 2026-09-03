@@ -15,15 +15,20 @@ locals {
 
   min_capacity = coalesce(var.min_capacity, var.desired_count)
 
-  listener_priority = var.listener_rule_priority != null ? var.listener_rule_priority : (
-    (parseint(substr(md5(var.service_name), 0, 4), 16) % 49000) + 10
+  alb_name = (
+    length("${var.service_name}-${var.environment}") <= 32
+    ? "${var.service_name}-${var.environment}"
+    : "${substr(var.service_name, 0, 32 - 1 - length(var.environment))}-${var.environment}"
   )
+
+  alb_subnets = var.alb_internal ? var.private_subnet_ids : var.public_subnet_ids
 
   tags = merge(
     {
-      Service   = var.service_name
-      ManagedBy = "terraform"
-      Module    = "ecs-api"
+      Service     = var.service_name
+      Environment = var.environment
+      ManagedBy   = "terraform"
+      Module      = "ecs-api"
     },
     var.tags,
   )

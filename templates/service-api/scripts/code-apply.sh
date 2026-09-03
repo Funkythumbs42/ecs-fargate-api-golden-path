@@ -23,3 +23,5 @@ terraform -chdir="$S" show -json tfplan-code \
   | python3 "$ROOT/scripts/assert-code-plan.py"
 
 terraform -chdir="$S" apply -input=false -no-color tfplan-code
+
+print_alb "$S"

@@ -16,7 +16,8 @@ provider "aws" {
   allowed_account_ids = ["784318225077"]
 }
 
-# Platform stack is a separate state key. This root is service-only.
+# Platform stack (VPC, subnets, cluster, ECR) is a separate state key
+# in the factory repo. This root is this app only, including its ALB.
 data "terraform_remote_state" "platform" {
   backend = "s3"
   config = {
@@ -31,9 +32,11 @@ locals {
 }
 
 module "api" {
-  source = "../../../../modules/ecs-api"
+  # Pin in production: replace ref=main with a tag or commit SHA.
+  source = "git::https://github.com/Funkythumbs42/ecs-fargate-api-golden-path.git//modules/ecs-api?ref=main"
 
   service_name           = var.service_name
+  environment            = var.environment
   image_digest           = var.image_digest
   cpu_mem_preset         = var.cpu_mem_preset
   container_port         = var.container_port
@@ -42,19 +45,17 @@ module "api" {
   min_capacity           = var.min_capacity
   max_capacity           = var.max_capacity
   health_check_path      = var.health_check_path
-  host_header            = var.host_header
+  alb_internal           = var.alb_internal
   enable_execute_command = var.enable_execute_command
   log_retention_days     = var.log_retention_days
   assign_public_ip       = false
   tags                   = var.tags
 
-  ecr_repository_url    = local.platform.ecr_repository_urls[var.service_name]
-  cluster_name          = local.platform.ecs_cluster_name
-  vpc_id                = local.platform.vpc_id
-  private_subnet_ids    = local.platform.private_subnet_ids
-  alb_listener_arn      = local.platform.alb_http_listener_arn
-  alb_security_group_id = local.platform.alb_security_group_id
-  alb_arn_suffix        = local.platform.alb_arn_suffix
+  ecr_repository_url = local.platform.ecr_repository_urls[var.service_name]
+  cluster_name       = local.platform.ecs_cluster_name
+  vpc_id             = local.platform.vpc_id
+  private_subnet_ids = local.platform.private_subnet_ids
+  public_subnet_ids  = local.platform.public_subnet_ids
 }
 
 output "service_name" { value = module.api.service_name }
@@ -64,3 +65,6 @@ output "log_group" { value = module.api.log_group }
 output "security_group_id" { value = module.api.security_group_id }
 output "image" { value = module.api.image }
 output "image_digest" { value = module.api.image_digest }
+output "alb_dns_name" { value = module.api.alb_dns_name }
+output "alb_arn" { value = module.api.alb_arn }
+output "alb_internal" { value = module.api.alb_internal }

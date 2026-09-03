@@ -1,6 +1,6 @@
 resource "aws_security_group" "service" {
   name_prefix = "${var.service_name}-"
-  description = "Fargate tasks for ${var.service_name}: ingress from ALB only"
+  description = "Fargate tasks for ${var.service_name}: ingress from this app ALB only"
   vpc_id      = var.vpc_id
   tags        = local.tags
 
@@ -15,7 +15,7 @@ resource "aws_vpc_security_group_ingress_rule" "from_alb" {
   from_port                    = var.container_port
   to_port                      = var.container_port
   ip_protocol                  = "tcp"
-  referenced_security_group_id = var.alb_security_group_id
+  referenced_security_group_id = aws_security_group.alb.id
   tags                         = local.tags
 }
 

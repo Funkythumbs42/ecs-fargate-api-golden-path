@@ -1,4 +1,6 @@
 envs/
+scripts/
+.teamcity/
 **/.terraform/
 **/*.tfstate*
 **/*.md

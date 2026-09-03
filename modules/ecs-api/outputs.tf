@@ -32,3 +32,33 @@ output "image_digest" {
   description = "Digest currently in the task definition. Infra apply must pass this back in so a rollback of infra does not rewind the image."
   value       = var.image_digest
 }
+
+output "alb_dns_name" {
+  description = "DNS name of this app's ALB. curl http://<this>/health — no fake Host header."
+  value       = aws_lb.this.dns_name
+}
+
+output "alb_arn" {
+  description = "ARN of this app's ALB."
+  value       = aws_lb.this.arn
+}
+
+output "alb_arn_suffix" {
+  description = "ALB ARN suffix for request-count autoscaling."
+  value       = aws_lb.this.arn_suffix
+}
+
+output "alb_zone_id" {
+  description = "Canonical hosted zone ID of this app's ALB (for Route53 aliases)."
+  value       = aws_lb.this.zone_id
+}
+
+output "alb_security_group_id" {
+  description = "Security group attached to this app's ALB."
+  value       = aws_security_group.alb.id
+}
+
+output "alb_internal" {
+  description = "Whether the ALB is internal."
+  value       = var.alb_internal
+}

@@ -8,6 +8,16 @@ variable "service_name" {
   }
 }
 
+variable "environment" {
+  description = "Short env name (dev, staging, prod). Used in ALB and log-group names so envs in one account do not collide."
+  type        = string
+
+  validation {
+    condition     = can(regex("^[a-z][a-z0-9]{0,15}$", var.environment))
+    error_message = "environment must be a short lowercase name (e.g. dev, staging, prod)."
+  }
+}
+
 variable "image_digest" {
   description = "Image digest only (sha256:...). CI builds and pushes the image, then passes this in. Never a mutable tag."
   type        = string
@@ -69,7 +79,7 @@ variable "vpc_id" {
 }
 
 variable "private_subnet_ids" {
-  description = "Private subnet IDs for awsvpc ENIs (platform output). Fargate tasks stay private."
+  description = "Private subnet IDs for awsvpc ENIs (platform output). Fargate tasks stay private. Internal ALBs also land here."
   type        = list(string)
 
   validation {
@@ -78,19 +88,16 @@ variable "private_subnet_ids" {
   }
 }
 
-variable "alb_listener_arn" {
-  description = "ALB listener ARN to attach a rule to (platform output)."
-  type        = string
+variable "public_subnet_ids" {
+  description = "Public subnet IDs (platform output). Required for an internet-facing ALB."
+  type        = list(string)
+  default     = []
 }
 
-variable "alb_security_group_id" {
-  description = "ALB security group ID. Service SG admits this SG on container_port only."
-  type        = string
-}
-
-variable "alb_arn_suffix" {
-  description = "ALB arn_suffix, used for ALBRequestCountPerTarget autoscaling."
-  type        = string
+variable "alb_internal" {
+  description = "true = internal ALB in private subnets. false = internet-facing ALB in public subnets (default for a public HTTP API)."
+  type        = bool
+  default     = false
 }
 
 variable "assign_public_ip" {
@@ -138,24 +145,6 @@ variable "health_check_path" {
   description = "ALB HTTP health-check path."
   type        = string
   default     = "/health"
-}
-
-variable "host_header" {
-  description = "If set, ALB rule matches this host header. If null, rule is path-based (path_pattern)."
-  type        = string
-  default     = null
-}
-
-variable "path_pattern" {
-  description = "Path pattern used when host_header is null. Ignored when host_header is set (host rule takes the service)."
-  type        = string
-  default     = "/*"
-}
-
-variable "listener_rule_priority" {
-  description = "Explicit ALB rule priority. Null derives a stable value from service_name."
-  type        = number
-  default     = null
 }
 
 variable "enable_execute_command" {

@@ -38,6 +38,7 @@ output "private_subnet_ids" { value = module.platform.private_subnet_ids }
 output "public_subnet_ids" { value = module.platform.public_subnet_ids }
 output "ecs_cluster_name" { value = module.platform.ecs_cluster_name }
 output "ecs_cluster_arn" { value = module.platform.ecs_cluster_arn }
+# Leftover shared ALB (live PoC). New apps ignore these and own their ALB.
 output "alb_http_listener_arn" { value = module.platform.alb_http_listener_arn }
 output "alb_security_group_id" { value = module.platform.alb_security_group_id }
 output "alb_arn_suffix" { value = module.platform.alb_arn_suffix }

@@ -93,5 +93,5 @@ resource "aws_ecs_service" "this" {
 
   tags = local.tags
 
-  depends_on = [aws_lb_listener_rule.this]
+  depends_on = [aws_lb_listener.http]
 }

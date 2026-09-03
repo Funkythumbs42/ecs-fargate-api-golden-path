@@ -9,7 +9,7 @@ output "private_subnet_ids" {
 }
 
 output "public_subnet_ids" {
-  description = "Public subnet IDs (ALB)."
+  description = "Public subnet IDs (internet-facing app ALBs, NAT)."
   value       = aws_subnet.public[*].id
 }
 
@@ -24,22 +24,22 @@ output "ecs_cluster_arn" {
 }
 
 output "alb_http_listener_arn" {
-  description = "HTTP listener ARN. Service modules attach rules here."
+  description = "Leftover shared ALB listener (live PoC). New apps ignore this; they own their ALB."
   value       = aws_lb_listener.http.arn
 }
 
 output "alb_security_group_id" {
-  description = "ALB security group. Service SGs admit this ID only."
+  description = "Leftover shared ALB security group (live PoC). New apps ignore this."
   value       = aws_security_group.alb.id
 }
 
 output "alb_arn_suffix" {
-  description = "ALB ARN suffix for request-count autoscaling."
+  description = "Leftover shared ALB ARN suffix (live PoC). New apps ignore this."
   value       = aws_lb.this.arn_suffix
 }
 
 output "alb_dns_name" {
-  description = "Public ALB DNS name."
+  description = "Leftover shared ALB DNS (live PoC). New apps output their own alb_dns_name."
   value       = aws_lb.this.dns_name
 }
 

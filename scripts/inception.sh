@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
 # From-nothing factory. Called by TeamCity "new-api" (or make inception).
-# Creates the service files, registers it in the factory DSL list, builds
-# the first image, and commits so TeamCity can load the new pipelines.
-# Terraform apply / ECR push run only when AWS creds are real; the
-# placeholder account in this example will not be applied.
+# Renders the app template into a temp dir, creates/attaches a GitHub repo,
+# registers a TeamCity project whose VCS root is THAT repo, and records a
+# pointer + ECR name in this factory. Does not copy the app into services/.
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
@@ -12,56 +11,77 @@ NAME="${1:-${NEW_NAME:-}}"
 PORT="${2:-${NEW_PORT:-8080}}"
 PRESET="${3:-${NEW_PRESET:-small}}"
 HOST="${4:-${NEW_HOST:-}}"
-GIT_MODE="${5:-${GIT_MODE:-this-repo}}"
+GIT_MODE="${5:-${GIT_MODE:-create}}"
 GIT_REPO="${6:-${GIT_REPO:-}}"
+ALB_INTERNAL="${7:-${ALB_INTERNAL:-false}}"
 
 if [[ -z "$NAME" ]]; then
-  echo "usage: $0 <service-name> [port] [small|medium|large] [host-header] [this-repo|create|existing] [owner/name-or-url]" >&2
+  echo "usage: $0 <service-name> [port] [small|medium|large] [host-hint] [create|existing] [owner/name-or-url] [false|true]" >&2
   exit 1
 fi
 if [[ ! "$PRESET" =~ ^(small|medium|large)$ ]]; then
   echo "preset must be small|medium|large" >&2
   exit 1
 fi
-if [[ -z "$HOST" ]]; then
-  HOST="${NAME}.dev.example.invalid"
+if [[ ! "$ALB_INTERNAL" =~ ^(true|false)$ ]]; then
+  echo "alb_internal must be true or false (true = internal ALB, false = internet-facing)" >&2
+  exit 1
+fi
+if [[ "$GIT_MODE" == "this-repo" ]]; then
+  echo "git.mode=this-repo is not the product path. Use create (default) or existing." >&2
+  exit 1
 fi
 
-echo "==> scaffold $NAME"
-"$ROOT/scripts/new-service.sh" "$NAME"
+DEST="$(mktemp -d "/tmp/factory-${NAME}.XXXXXX")"
+cleanup() { rm -rf "$DEST"; }
+trap cleanup EXIT
 
-echo "==> tfvars port=$PORT preset=$PRESET host=$HOST"
+echo "==> scaffold $NAME into temp dir (template: templates/service-api)"
+"$ROOT/scripts/new-service.sh" "$NAME" "$DEST"
+
+echo "==> tfvars port=$PORT preset=$PRESET alb_internal=$ALB_INTERNAL"
 for env in dev staging prod; do
-  f="$ROOT/services/$NAME/envs/$env/terraform.tfvars"
+  f="$DEST/envs/$env/terraform.tfvars"
   sed -i "s/^container_port.*/container_port         = ${PORT}/" "$f"
   sed -i "s/^cpu_mem_preset.*/cpu_mem_preset         = \"${PRESET}\"/" "$f"
+  sed -i "s/^alb_internal.*/alb_internal           = ${ALB_INTERNAL}/" "$f"
 done
-# Host header is per-env; keep env in the hostname.
-sed -i "s/^host_header.*/host_header            = \"${NAME}.dev.example.invalid\"/" \
-  "$ROOT/services/$NAME/envs/dev/terraform.tfvars"
-sed -i "s/^host_header.*/host_header            = \"${NAME}.staging.example.invalid\"/" \
-  "$ROOT/services/$NAME/envs/staging/terraform.tfvars"
-sed -i "s/^host_header.*/host_header            = \"${NAME}.example.invalid\"/" \
-  "$ROOT/services/$NAME/envs/prod/terraform.tfvars"
-if [[ -n "${4:-}" ]]; then
-  sed -i "s/^host_header.*/host_header            = \"${HOST}\"/" \
-    "$ROOT/services/$NAME/envs/dev/terraform.tfvars"
+
+if [[ -n "$HOST" ]]; then
+  echo "Suggested DNS / CNAME for the dedicated ALB: $HOST" >> "$DEST/README.md"
+  echo "==> host hint recorded in app README (ALB is dedicated; no Host-header rule)"
 fi
 
-export ROOT NAME GIT_MODE GIT_REPO
-bash "$ROOT/scripts/service-git.sh"
+add_ecr() {
+  local f="$1"
+  grep -q "\"$NAME\"" "$f" && return 0
+  sed -i "s/ecr_repositories[[:space:]]*=[[:space:]]*\\[\\(.*\\)\\]/ecr_repositories     = [\\1, \"$NAME\"]/" "$f"
+}
+for env in dev staging prod; do
+  add_ecr "$ROOT/platform/envs/$env/terraform.tfvars"
+done
 
-echo "==> docker build ${NAME}:inception"
-docker build \
-  --build-arg VERSION="inception" \
-  --build-arg SERVICE_NAME="$NAME" \
-  -t "${NAME}:inception" \
-  "$ROOT/services/$NAME"
-
-DIGEST_FILE="$ROOT/services/$NAME/.inception-image-digest"
-if docker image inspect "${NAME}:inception" --format '{{.Id}}' > /tmp/img-id 2>/dev/null; then
-  echo "local image ${NAME}:inception id=$(cat /tmp/img-id)"
+echo "==> docker build ${NAME}:inception (verify Dockerfile)"
+if command -v docker >/dev/null; then
+  docker build \
+    --build-arg VERSION="inception" \
+    --build-arg SERVICE_NAME="$NAME" \
+    -t "${NAME}:inception" \
+    "$DEST"
+else
+  echo "docker not on PATH; skip local image build"
 fi
+
+export ROOT NAME DEST GIT_MODE GIT_REPO
+APP_GIT_URL="$(bash "$ROOT/scripts/service-git.sh")"
+export APP_GIT_URL
+echo "==> app repo: $APP_GIT_URL"
+
+echo "==> register TeamCity project for the app repo"
+# Inside a TeamCity build these %...% params are expanded by the Kotlin step.
+# Locally: export TEAMCITY_URL / TEAMCITY_TOKEN (never commit them).
+export NAME APP_GIT_URL
+bash "$ROOT/scripts/register-teamcity.sh"
 
 if command -v git >/dev/null && [[ -d "$ROOT/.git" || "${INCEPTION_GIT:-}" == "1" ]]; then
   if [[ ! -d "$ROOT/.git" ]]; then
@@ -70,30 +90,22 @@ if command -v git >/dev/null && [[ -d "$ROOT/.git" || "${INCEPTION_GIT:-}" == "1
     git -c user.email="factory@example.invalid" -c user.name="api-factory" \
       commit -m "factory: initial" || true
   fi
-  git add "services/$NAME" .teamcity/services.list platform/envs/*/terraform.tfvars
+  git add .teamcity/services.list platform/envs/*/terraform.tfvars
   if ! git diff --cached --quiet; then
     git -c user.email="factory@example.invalid" -c user.name="api-factory" \
-      commit -m "factory: add ${NAME}"
-    echo "==> committed so TeamCity versioned settings can load pipelines for $NAME"
+      commit -m "factory: register ${NAME} (ECR + app pointer)"
+    echo "==> committed factory pointer + ECR name for $NAME"
   fi
 fi
 
-if aws sts get-caller-identity >/dev/null 2>&1; then
-  ACCOUNT="$(aws sts get-caller-identity --query Account --output text)"
-  if [[ "$ACCOUNT" == "123456789012" ]]; then
-    echo "==> AWS is the placeholder account; skip apply"
-  else
-    echo "==> AWS account $ACCOUNT: first create (platform ECR + service)"
-    export SERVICE_NAME="$NAME"
-    export DEPLOY_ENV="${DEPLOY_ENV:-dev}"
-    # Real accounts must already have backend.hcl and IDs patched.
-    bash "$ROOT/scripts/infra-apply.sh"
-  fi
+echo
+echo "inception ok: service=$NAME image=${NAME}:inception repo=${APP_GIT_URL}"
+echo "App files were NOT copied into factory services/."
+echo "First AWS deploy: after TeamCity loads the app .teamcity, Run '${NAME} / create (dev)'."
+echo "That build checks out the APP repo, pushes a digest, and applies envs/dev (dedicated ALB)."
+echo "If ECR does not exist yet, Run factory 'platform apply (dev)' once so the new repository is created."
+if [[ "$ALB_INTERNAL" == "true" ]]; then
+  echo "ALB: internal (private subnets). Curl from inside the VPC."
 else
-  echo "==> no AWS creds; files + image + pipelines are in place"
-  echo "    with real account IDs, this same job runs infra-apply after ECR exists"
+  echo "ALB: internet-facing (public subnets). create/ship prints alb_dns_name; no Host header."
 fi
-
-echo "inception ok: service=$NAME image=${NAME}:inception"
-echo "after TeamCity reloads versioned settings, ship/promote/rollback exist under $NAME"
-echo "first AWS deploy: Run '$NAME / create (dev)' or re-run this job with creds"

@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
-# Infra plan: platform first, then service. Image comes from STATE (or
-# IMAGE_DIGEST only on first create). Never from a freshly built image
-# unless this is the first apply of the service.
+# Infra apply: this app's Terraform only (ALB + service). Preserves the running image digest.
+# Platform (VPC/cluster/ECR) is applied from the factory, not here.
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # shellcheck source=tf-common.sh
@@ -12,11 +11,7 @@ source "$ROOT/scripts/tf-common.sh"
 
 aws sts get-caller-identity >/dev/null
 
-P="$(platform_root)"
 S="$(service_root)"
-
-tf_init "$P"
-terraform -chdir="$P" plan -input=false -no-color -out=tfplan-platform
 
 tf_init "$S"
 CURRENT="$(state_digest "$S")"
@@ -28,6 +23,7 @@ else
   echo "preserving running digest $CURRENT"
 fi
 
-terraform -chdir="$S" plan -input=false -no-color \
-  -var="image_digest=${CURRENT}" \
-  -out=tfplan-service
+terraform -chdir="$S" apply -input=false -no-color -auto-approve \
+  -var="image_digest=${CURRENT}"
+
+print_alb "$S"

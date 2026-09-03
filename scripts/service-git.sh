@@ -1,14 +1,15 @@
 #!/usr/bin/env bash
-# Attach or create a GitHub repo for a factory service.
-# Env: ROOT NAME GIT_MODE (this-repo|create|existing) GIT_REPO (owner/name or URL)
+# Create or attach a GitHub repo for a rendered app tree, then push the scaffold.
+# Env: ROOT NAME DEST GIT_MODE (create|existing) GIT_REPO (owner/name or URL)
+# Default git mode is create. this-repo is not a product path.
 set -euo pipefail
 
 ROOT="${ROOT:?}"
 NAME="${NAME:?}"
-GIT_MODE="${GIT_MODE:-this-repo}"
+DEST="${DEST:?}"
+GIT_MODE="${GIT_MODE:-create}"
 GIT_REPO="${GIT_REPO:-}"
 LIST="$ROOT/.teamcity/services.list"
-SERVICE_DIR="$ROOT/services/$NAME"
 
 log() { echo "==> $*"; }
 
@@ -45,10 +46,10 @@ gh_login() {
 register_line() {
   local name="$1"
   local rest="${2:-}"
+  mkdir -p "$(dirname "$LIST")"
   touch "$LIST"
   local tmp
   tmp="$(mktemp)"
-  # drop any existing line for this service (comment lines stay)
   awk -v n="$name" '
     $0 ~ /^[[:space:]]*#/ { print; next }
     NF==0 { print; next }
@@ -70,32 +71,26 @@ repo_is_effectively_empty() {
   if [[ -z "$files" ]]; then
     return 0
   fi
-  # GitHub's default README/LICENSE/gitignore still counts as empty for our purposes
   if echo "$files" | grep -Ev '^(README(\.md)?|LICENSE.*|\.gitignore)$' >/dev/null; then
     return 1
   fi
   return 0
 }
 
-push_service_tree() {
+push_app_tree() {
   local url="$1"
   local tmp
   tmp="$(mktemp -d)"
   trap 'rm -rf "$tmp"' RETURN
   git clone "$url" "$tmp/repo"
   if ! repo_is_effectively_empty "$tmp/repo"; then
-    die "existing repo is not empty; recorded the pointer but refusing to overwrite. Clone it yourself and keep the factory services/${NAME} copy as CI source."
+    die "existing repo is not empty; recorded the pointer but refusing to overwrite."
   fi
-  # Service tree at repo root (app + Dockerfile + envs). Factory still holds CI + platform.
   shopt -s dotglob
-  cp -a "$SERVICE_DIR"/* "$tmp/repo/"
+  cp -a "$DEST"/. "$tmp/repo/"
   shopt -u dotglob
-  cat > "$tmp/repo/FACTORY.md" << MD
-This repo is the git home for **${NAME}**.
-
-TeamCity pipelines and shared platform Terraform live in the factory:
-https://github.com/Funkythumbs42/ecs-fargate-api-golden-path
-MD
+  # Drop leftover git metadata from a previous copy if any (DEST is not a git repo).
+  rm -rf "$tmp/repo/.git/info" 2>/dev/null || true
   git -C "$tmp/repo" add -A
   if git -C "$tmp/repo" diff --cached --quiet; then
     log "nothing to push to $url"
@@ -110,11 +105,7 @@ MD
 }
 
 case "$GIT_MODE" in
-  this-repo|"")
-    register_line "$NAME"
-    log "git: service stays in this factory repo"
-    ;;
-  create)
+  create|"")
     require_gh
     if [[ -z "$GIT_REPO" ]]; then
       GIT_REPO="$(gh_login)/${NAME}"
@@ -125,9 +116,12 @@ case "$GIT_MODE" in
       die "GitHub repo $slug already exists; use git.mode=existing to attach it"
     fi
     log "creating private GitHub repo $slug"
-    gh repo create "$slug" --private --description "API ${NAME} (golden-path service)" --confirm
-    push_service_tree "$url"
+    if ! gh repo create "$slug" --private --description "API ${NAME} (golden-path app repo)" --confirm; then
+      gh repo create "$slug" --private --description "API ${NAME} (golden-path app repo)"
+    fi
+    push_app_tree "$url"
     register_line "$NAME" "$url"
+    echo "$url"
     ;;
   existing)
     require_gh
@@ -140,14 +134,18 @@ case "$GIT_MODE" in
     git clone "$url" "$tmp/repo"
     if repo_is_effectively_empty "$tmp/repo"; then
       rm -rf "$tmp"
-      push_service_tree "$url"
+      push_app_tree "$url"
     else
       rm -rf "$tmp"
       log "repo has commits; recording pointer only (will not overwrite)"
     fi
     register_line "$NAME" "$url"
+    echo "$url"
+    ;;
+  this-repo)
+    die "git.mode=this-repo is not the product path. App files live in a standalone GitHub repo (create|existing)."
     ;;
   *)
-    die "git.mode must be this-repo, create, or existing (got: $GIT_MODE)"
+    die "git.mode must be create or existing (got: $GIT_MODE)"
     ;;
 esac
