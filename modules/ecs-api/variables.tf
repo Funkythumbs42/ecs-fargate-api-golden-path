@@ -54,7 +54,7 @@ variable "secrets" {
 }
 
 variable "ecr_repository_url" {
-  description = "ECR repository URL without tag or digest (e.g. 123456789012.dkr.ecr.eu-west-1.amazonaws.com/example-api)."
+  description = "ECR repository URL without tag or digest (e.g. 784318225077.dkr.ecr.eu-west-1.amazonaws.com/example-api)."
   type        = string
 }
 

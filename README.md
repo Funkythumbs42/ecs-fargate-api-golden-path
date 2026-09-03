@@ -1,7 +1,7 @@
 # ECS Fargate HTTP API — golden path example
 
 Platform example you can hand to an app team. Fake AWS account
-`123456789012`, region `eu-west-1`. It will not apply against a real
+`784318225077`, region `eu-west-1`. It will not apply against a real
 account without you changing IDs, backends, and DNS.
 
 CI is **TeamCity**. Infra is **Terraform**. Import this repo once as

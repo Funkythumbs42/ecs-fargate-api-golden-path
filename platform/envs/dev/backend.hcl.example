@@ -1,6 +1,6 @@
 # Copy to backend.hcl locally, or pass -backend-config=backend.hcl.example.
 # Bucket/table are created once (see modules/platform/state.tf) or out of band.
-bucket         = "example-tfstate-123456789012-eu-west-1"
+bucket         = "example-tfstate-784318225077-eu-west-1"
 key            = "platform/dev/terraform.tfstate"
 region         = "eu-west-1"
 dynamodb_table = "example-tfstate-lock"

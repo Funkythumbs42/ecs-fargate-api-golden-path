@@ -15,7 +15,7 @@ provider "aws" {
   region = "eu-west-1"
 
   # Example account only. Do not apply this to a real account as-is.
-  allowed_account_ids = ["123456789012"]
+  allowed_account_ids = ["784318225077"]
 }
 
 module "platform" {

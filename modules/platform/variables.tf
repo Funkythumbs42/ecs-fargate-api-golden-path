@@ -56,7 +56,7 @@ variable "create_state_backend" {
 variable "state_bucket_name" {
   description = "S3 bucket name for Terraform state (only used when create_state_backend is true)."
   type        = string
-  default     = "example-tfstate-123456789012-eu-west-1"
+  default     = "example-tfstate-784318225077-eu-west-1"
 }
 
 variable "state_lock_table_name" {

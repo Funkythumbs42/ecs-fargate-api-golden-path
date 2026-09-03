@@ -13,7 +13,7 @@ terraform {
 
 provider "aws" {
   region              = "eu-west-1"
-  allowed_account_ids = ["123456789012"]
+  allowed_account_ids = ["784318225077"]
 }
 
 # Platform stack is a separate state key. This root is service-only.

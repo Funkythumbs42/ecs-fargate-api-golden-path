@@ -46,3 +46,6 @@ backend.hcl
 
 # Written by make teamcity-up (machine-local absolute path)
 .env
+
+# Local apply notes
+.deploy-dev-report.txt

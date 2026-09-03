@@ -1,4 +1,4 @@
-# Placeholder values. Account 123456789012 is fake.
+# Placeholder values. Personal sandbox account 784318225077.
 name                 = "example-platform-dev"
 vpc_cidr             = "10.10.0.0/16"
 azs                  = ["eu-west-1a", "eu-west-1b"]

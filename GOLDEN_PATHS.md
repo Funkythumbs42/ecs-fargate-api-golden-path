@@ -22,7 +22,7 @@ The factory project is this repo imported into TeamCity **once**.
      `.teamcity/services.list` (the DSL grows a subproject on reload)
    - builds the first image (`<name>:inception`)
    - commits so versioned settings can see the new pipelines
-   - if AWS creds are a real account (not `123456789012`), runs
+   - if AWS creds are a real account (not `784318225077`), runs
      `infra / apply` as the first deploy
 3. After TeamCity reloads settings, the app already has `create`,
    `ship`, `promote`, `rollback`. If AWS was skipped, run

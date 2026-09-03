@@ -1,4 +1,4 @@
-bucket         = "example-tfstate-123456789012-eu-west-1"
+bucket         = "example-tfstate-784318225077-eu-west-1"
 key            = "services/example-api/prod/terraform.tfstate"
 region         = "eu-west-1"
 dynamodb_table = "example-tfstate-lock"
