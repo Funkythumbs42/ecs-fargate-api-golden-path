@@ -37,6 +37,15 @@ https_url() {
 require_gh() {
   command -v gh >/dev/null || die "gh (GitHub CLI) is required for git.mode=${GIT_MODE}"
   gh auth status >/dev/null 2>&1 || die "gh is not logged in; run gh auth login"
+  # Private https://github.com clone/push has no TTY on TeamCity; use gh as the helper.
+  gh auth setup-git >/dev/null 2>&1 || true
+}
+
+clone_repo() {
+  local slug="$1"
+  local dest="$2"
+  # gh repo clone uses the logged-in token; plain git clone prompts and dies (exit 128).
+  gh repo clone "$slug" "$dest"
 }
 
 gh_login() {
@@ -78,11 +87,13 @@ repo_is_effectively_empty() {
 }
 
 push_app_tree() {
-  local url="$1"
+  local slug="$1"
+  local url
+  url="$(https_url "$slug")"
   local tmp
   tmp="$(mktemp -d)"
   trap 'rm -rf "$tmp"' RETURN
-  git clone "$url" "$tmp/repo"
+  clone_repo "$slug" "$tmp/repo"
   if ! repo_is_effectively_empty "$tmp/repo"; then
     die "existing repo is not empty; recorded the pointer but refusing to overwrite."
   fi
@@ -121,10 +132,10 @@ case "$GIT_MODE" in
       fi
     fi
     tmp="$(mktemp -d)"
-    git clone "$url" "$tmp/repo"
+    clone_repo "$slug" "$tmp/repo"
     if repo_is_effectively_empty "$tmp/repo"; then
       rm -rf "$tmp"
-      push_app_tree "$url"
+      push_app_tree "$slug"
     else
       rm -rf "$tmp"
       log "repo already has commits; pointer only (will not overwrite)"
@@ -140,10 +151,10 @@ case "$GIT_MODE" in
     gh repo view "$slug" >/dev/null 2>&1 || die "GitHub repo $slug not found (or this account cannot see it)"
     log "attaching existing $slug"
     tmp="$(mktemp -d)"
-    git clone "$url" "$tmp/repo"
+    clone_repo "$slug" "$tmp/repo"
     if repo_is_effectively_empty "$tmp/repo"; then
       rm -rf "$tmp"
-      push_app_tree "$url"
+      push_app_tree "$slug"
     else
       rm -rf "$tmp"
       log "repo has commits; recording pointer only (will not overwrite)"
