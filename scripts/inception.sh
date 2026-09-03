@@ -15,6 +15,9 @@ GIT_MODE="${5:-${GIT_MODE:-create}}"
 GIT_REPO="${6:-${GIT_REPO:-}}"
 ALB_INTERNAL="${7:-${ALB_INTERNAL:-false}}"
 
+# shellcheck source=inception-normalize.sh
+source "$ROOT/scripts/inception-normalize.sh"
+
 if [[ -z "$NAME" ]]; then
   echo "usage: $0 <service-name> [port] [small|medium|large] [host-hint] [create|existing] [owner/name-or-url] [false|true]" >&2
   exit 1
