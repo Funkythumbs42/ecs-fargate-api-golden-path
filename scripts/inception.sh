@@ -76,7 +76,7 @@ else
 fi
 
 export ROOT NAME DEST GIT_MODE GIT_REPO
-APP_GIT_URL="$(bash "$ROOT/scripts/service-git.sh")"
+APP_GIT_URL="$(bash "$ROOT/scripts/service-git.sh" | tail -n1)"
 export APP_GIT_URL
 echo "==> app repo: $APP_GIT_URL"
 

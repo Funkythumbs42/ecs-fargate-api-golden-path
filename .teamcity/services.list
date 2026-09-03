@@ -2,3 +2,4 @@
 # TeamCity subprojects. Each app repo has its own .teamcity and TeamCity project.
 # Written by factory new-api (scripts/service-git.sh).
 example-api https://github.com/Funkythumbs42/example-api.git
+testapi2 https://github.com/Funkythumbs42/testapi2.git

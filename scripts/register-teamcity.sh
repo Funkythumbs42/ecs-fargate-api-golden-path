@@ -20,6 +20,22 @@ TEAMCITY_TOKEN="${TEAMCITY_TOKEN:-}"
 TEAMCITY_USER="${TEAMCITY_USER:-}"
 TEAMCITY_PASSWORD="${TEAMCITY_PASSWORD:-}"
 
+# Ephemeral build credentials cannot create projects (REST 403).
+if [[ "${TEAMCITY_USER:-}" == TeamCityBuildId=* ]]; then
+  TEAMCITY_USER=""
+  TEAMCITY_PASSWORD=""
+fi
+if [[ -z "${TEAMCITY_TOKEN:-}" && -n "${TEAMCITY_TOKEN_FILE:-}" && -f "$TEAMCITY_TOKEN_FILE" ]]; then
+  TEAMCITY_TOKEN="$(cat "$TEAMCITY_TOKEN_FILE")"
+fi
+if [[ -z "${TEAMCITY_TOKEN:-}" && -f /run/secrets/tc.token ]]; then
+  TEAMCITY_TOKEN="$(cat /run/secrets/tc.token)"
+fi
+cleaned="$(printf "%s\n" "$APP_GIT_URL" | grep -Eo "https://github.com/[^[:space:]]+" | tail -n1 || true)"
+if [[ -n "$cleaned" ]]; then
+  APP_GIT_URL="$cleaned"
+fi
+
 log() { echo "==> $*"; }
 
 ui_fallback() {
@@ -47,7 +63,7 @@ TEAMCITY_URL="${TEAMCITY_URL%/}"
 
 AUTH_ARGS=()
 if [[ -n "$TEAMCITY_TOKEN" ]]; then
-  AUTH_ARGS=(-H "Authorization: Bearer ${TEAMCITY_TOKEN}")
+  AUTH_ARGS=(-u ":${TEAMCITY_TOKEN}")
 elif [[ -n "$TEAMCITY_USER" && -n "$TEAMCITY_PASSWORD" ]]; then
   AUTH_ARGS=(-u "${TEAMCITY_USER}:${TEAMCITY_PASSWORD}")
 else

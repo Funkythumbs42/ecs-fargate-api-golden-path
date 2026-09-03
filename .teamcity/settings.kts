@@ -125,8 +125,6 @@ class NewApi : BuildType({
                 export GIT_REPO="%new.git.repo%"
                 export ALB_INTERNAL="%new.alb.internal%"
                 export TEAMCITY_URL="%teamcity.serverUrl%"
-                export TEAMCITY_USER="%system.teamcity.auth.userId%"
-                export TEAMCITY_PASSWORD="%system.teamcity.auth.password%"
                 bash scripts/inception.sh "%new.name%" "%new.port%" "%new.preset%" "%new.host%" "%new.git.mode%" "%new.git.repo%" "%new.alb.internal%"
                 echo "##teamcity[buildStatus text='created %new.name% image=%new.name%:inception']"
             """.trimIndent()

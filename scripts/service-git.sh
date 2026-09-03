@@ -11,7 +11,7 @@ GIT_MODE="${GIT_MODE:-create}"
 GIT_REPO="${GIT_REPO:-}"
 LIST="$ROOT/.teamcity/services.list"
 
-log() { echo "==> $*"; }
+log() { echo "==> $*" >&2; }
 
 die() { echo "$*" >&2; exit 1; }
 
@@ -113,13 +113,22 @@ case "$GIT_MODE" in
     slug="$(normalize_slug "$GIT_REPO")"
     url="$(https_url "$slug")"
     if gh repo view "$slug" >/dev/null 2>&1; then
-      die "GitHub repo $slug already exists; use git.mode=existing to attach it"
+      log "GitHub repo $slug already exists; reusing it (retry will not create another repo)"
+    else
+      log "creating private GitHub repo $slug"
+      if ! gh repo create "$slug" --private --description "API ${NAME} (golden-path app repo)" --confirm; then
+        gh repo create "$slug" --private --description "API ${NAME} (golden-path app repo)"
+      fi
     fi
-    log "creating private GitHub repo $slug"
-    if ! gh repo create "$slug" --private --description "API ${NAME} (golden-path app repo)" --confirm; then
-      gh repo create "$slug" --private --description "API ${NAME} (golden-path app repo)"
+    tmp="$(mktemp -d)"
+    git clone "$url" "$tmp/repo"
+    if repo_is_effectively_empty "$tmp/repo"; then
+      rm -rf "$tmp"
+      push_app_tree "$url"
+    else
+      rm -rf "$tmp"
+      log "repo already has commits; pointer only (will not overwrite)"
     fi
-    push_app_tree "$url"
     register_line "$NAME" "$url"
     echo "$url"
     ;;

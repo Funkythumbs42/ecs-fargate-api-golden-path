@@ -27,7 +27,10 @@ repo. Separate state keys. No Terraform workspaces.
 2. Git:
    - `create` (default): `gh repo create` a new **private** GitHub repo
      (optional `owner/name`; default `<you>/<service-name>`) and push the
-     scaffold (app at repo root, `envs/*`, `.teamcity/`)
+     scaffold (app at repo root, `envs/*`, `.teamcity/`). Re-running
+     `new-api` with the **same name** reuses that repo (does not create a
+     second one). Empty repos get the scaffold; repos with commits are
+     pointer-only.
    - `existing`: attach an existing GitHub repo (`owner/name` or URL).
      Empty repos get the scaffold; non-empty are pointer-only (not overwritten)
 3. That job is `scripts/inception.sh`:

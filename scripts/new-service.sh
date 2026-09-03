@@ -35,3 +35,10 @@ find "$DEST" -type f \( -name '*.tfstate' -o -name '*.tfstate.*' -o -name '.terr
 find "$DEST" -type f -print0 | xargs -0 sed -i "s/example-api/${NAME}/g"
 
 echo "scaffolded $DEST from templates/service-api for $NAME"
+
+# TeamCity versioned settings delete the project if Kotlin has no uuid.
+if [[ -f "$DEST/.teamcity/settings.kts" ]] && ! grep -q 'uuid =' "$DEST/.teamcity/settings.kts"; then
+  UUID="$(python3 -c 'import uuid; print(uuid.uuid4())')"
+  sed -i "s/^project {/project {\n    uuid = \"$UUID\"/" "$DEST/.teamcity/settings.kts"
+  echo "pinned TeamCity project uuid $UUID"
+fi
