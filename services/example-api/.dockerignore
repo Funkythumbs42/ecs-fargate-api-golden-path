@@ -1,0 +1,9 @@
+envs/
+**/.terraform/
+**/*.tfstate*
+**/*.md
+.git
+.gitignore
+Dockerfile
+.dockerignore
+**/.DS_Store

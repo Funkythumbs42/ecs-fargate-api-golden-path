@@ -1,0 +1,3 @@
+# One service name per line. The factory build "new-api" appends here.
+# Root settings.kts turns each line into a TeamCity subproject (pipelines).
+example-api

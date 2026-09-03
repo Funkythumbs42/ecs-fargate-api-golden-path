@@ -1,0 +1,59 @@
+# Local TeamCity for exercising this repo's Kotlin DSL.
+# Not a production CI. Images match .teamcity/settings.kts (2024.12).
+#
+# RAM: budget ~4GB for the server's first start; the agent is extra.
+# First boot of the server can take several minutes before :8111 answers.
+#
+# Docker on the agent: we bind-mount the host docker.sock so `docker build`
+# uses the host daemon (simple). That is a privilege tradeoff — the agent
+# is effectively root on the host Docker daemon. Do not run this compose
+# on a shared machine. The DinD alternative is commented on the agent.
+#
+# Path identity: HOST_REPO_PATH is the absolute host path to this repo.
+# `make teamcity-up` writes it to .env (gitignored) so interpolation works
+# even under `sudo docker compose`. The repo is mounted at that same path
+# inside the containers so docker.sock builds resolve. See LOCAL_TEAMCITY.md.
+
+services:
+  teamcity-server:
+    image: jetbrains/teamcity-server:2024.12
+    container_name: example-teamcity-server
+    ports:
+      - "8111:8111"
+    environment:
+      # ~2Gi heap; the process plus OS cache is why ~4GB host RAM is realistic.
+      TEAMCITY_SERVER_MEM_OPTS: -Xmx2g
+    volumes:
+      - teamcity-server-data:/data/teamcity_server/datadir
+      - teamcity-server-logs:/opt/teamcity/logs
+      # So the server can use a file:// VCS root against this checkout.
+      - ${HOST_REPO_PATH:?Set HOST_REPO_PATH via make teamcity-up}:${HOST_REPO_PATH}:ro
+    restart: unless-stopped
+
+  teamcity-agent:
+    image: jetbrains/teamcity-agent:2024.12
+    container_name: example-teamcity-agent
+    depends_on:
+      - teamcity-server
+    environment:
+      SERVER_URL: http://teamcity-server:8111
+      AGENT_NAME: local-docker-sock
+      TEAMCITY_AGENT_MEM_OPTS: -Xmx512m
+      # Consumed by the local-checks build (docker.sock path identity).
+      REPO_HOST_PATH: ${HOST_REPO_PATH:?}
+      # DinD alternative (drop the docker.sock volume and the user: override):
+      # DOCKER_IN_DOCKER: start
+    # Socket is usually root:docker. Root in the agent is the blunt local-dev
+    # fix so the CLI can talk to it. Prefer a dedicated throwaway machine.
+    user: "0:0"
+    volumes:
+      - teamcity-agent-config:/data/teamcity_agent/conf
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${HOST_REPO_PATH:?}:${HOST_REPO_PATH:?}
+    restart: unless-stopped
+    # privileged: true   # only if you switch to DOCKER_IN_DOCKER=start
+
+volumes:
+  teamcity-server-data:
+  teamcity-server-logs:
+  teamcity-agent-config:

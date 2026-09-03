@@ -1,0 +1,48 @@
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraform.tfvars
+*.auto.tfvars
+*.auto.tfvars.json
+tfplan
+tfplan.*
+
+# Keep example lockfiles if generated at a root
+# (modules do not need them)
+
+# Go
+bin/
+dist/
+vendor/
+*.exe
+*.test
+*.out
+coverage.html
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*~
+
+# CI artifacts
+image_digest.txt
+
+# Local backend leftovers
+backend.hcl
+!backend.hcl.example
+
+# Local TeamCity helper dirs (not the compose named volumes)
+.teamcity-local/
+
+# Written by make teamcity-up (machine-local absolute path)
+.env
