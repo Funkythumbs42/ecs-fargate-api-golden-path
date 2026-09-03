@@ -14,17 +14,25 @@ state keys. No Terraform workspaces.
 
 The factory project is this repo imported into TeamCity **once**.
 
-1. Run **`new-api`**. Prompted: name, port, preset, optional host.
-2. That job is `scripts/inception.sh`:
+1. Run **`new-api`**. Prompted: name, port, preset, optional host, **git location**.
+2. Git location:
+   - `this-repo` (default): service files stay in this factory repo
+   - `create`: `gh repo create` a new **private** GitHub repo (optional
+     `owner/name`; default `<you>/<service-name>`) and push the scaffold
+   - `existing`: attach an existing GitHub repo (`owner/name` or URL).
+     Empty repos get the scaffold; non-empty are pointer-only (not overwritten)
+   Pointers are stored on the `.teamcity/services.list` line. TeamCity
+   pipelines still run from this factory checkout.
+3. That job is `scripts/inception.sh`:
    - copies `services/example-api` to `services/<name>` (Dockerfile, Go,
      Terraform roots)
    - adds the name to platform `ecr_repositories` and to
      `.teamcity/services.list` (the DSL grows a subproject on reload)
    - builds the first image (`<name>:inception`)
    - commits so versioned settings can see the new pipelines
-   - if AWS creds are a real account (not `784318225077`), runs
-     `infra / apply` as the first deploy
-3. After TeamCity reloads settings, the app already has `create`,
+   - if AWS creds are a real account (not the placeholder `123456789012`),
+     runs `infra / apply` as the first deploy
+4. After TeamCity reloads settings, the app already has `create`,
    `ship`, `promote`, `rollback`. If AWS was skipped, run
    **`<name> / create (dev)`** once against a real account.
 

@@ -12,9 +12,11 @@ NAME="${1:-${NEW_NAME:-}}"
 PORT="${2:-${NEW_PORT:-8080}}"
 PRESET="${3:-${NEW_PRESET:-small}}"
 HOST="${4:-${NEW_HOST:-}}"
+GIT_MODE="${5:-${GIT_MODE:-this-repo}}"
+GIT_REPO="${6:-${GIT_REPO:-}}"
 
 if [[ -z "$NAME" ]]; then
-  echo "usage: $0 <service-name> [port] [small|medium|large] [host-header]" >&2
+  echo "usage: $0 <service-name> [port] [small|medium|large] [host-header] [this-repo|create|existing] [owner/name-or-url]" >&2
   exit 1
 fi
 if [[ ! "$PRESET" =~ ^(small|medium|large)$ ]]; then
@@ -46,12 +48,8 @@ if [[ -n "${4:-}" ]]; then
     "$ROOT/services/$NAME/envs/dev/terraform.tfvars"
 fi
 
-LIST="$ROOT/.teamcity/services.list"
-touch "$LIST"
-if ! grep -qx "$NAME" "$LIST"; then
-  echo "$NAME" >> "$LIST"
-  echo "==> registered $NAME in .teamcity/services.list"
-fi
+export ROOT NAME GIT_MODE GIT_REPO
+bash "$ROOT/scripts/service-git.sh"
 
 echo "==> docker build ${NAME}:inception"
 docker build \

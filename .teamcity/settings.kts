@@ -1,7 +1,7 @@
 /*
  * API factory. Import this repo into TeamCity once.
  *
- * From inception: Run **new-api**, fill in name / port / preset.
+ * From inception: Run **new-api**, fill in name / port / preset / git location.
  * That job scaffolds Terraform + Dockerfile + Go, registers the service
  * in services.list (so this DSL grows a subproject), builds the first
  * image, and commits. After settings reload, that app has create / ship /
@@ -136,6 +136,25 @@ class NewApi : BuildType({
             allowEmpty = true,
             label = "Optional dev host header (default: <name>.dev.example.invalid)"
         )
+        select(
+            "new.git.mode",
+            "this-repo",
+            display = ParameterDisplay.PROMPT,
+            label = "Git location",
+            description = "this-repo = stay in the factory. create = new private GitHub repo. existing = attach an existing GitHub repo.",
+            options = listOf(
+                "this-repo" to "This factory repo",
+                "create" to "Create a new private GitHub repo",
+                "existing" to "Use an existing GitHub repo"
+            )
+        )
+        text(
+            "new.git.repo",
+            "",
+            display = ParameterDisplay.PROMPT,
+            allowEmpty = true,
+            label = "GitHub repo (owner/name or URL). Required for existing. Optional for create (defaults to <you>/<service-name>)."
+        )
         param("env.INCEPTION_GIT", "1")
     }
 
@@ -147,7 +166,9 @@ class NewApi : BuildType({
                 ROOT="%teamcity.build.checkoutDir%"
                 cd "${'$'}ROOT"
                 export INCEPTION_GIT=1
-                bash scripts/inception.sh "%new.name%" "%new.port%" "%new.preset%" "%new.host%"
+                export GIT_MODE="%new.git.mode%"
+                export GIT_REPO="%new.git.repo%"
+                bash scripts/inception.sh "%new.name%" "%new.port%" "%new.preset%" "%new.host%" "%new.git.mode%" "%new.git.repo%"
                 echo "##teamcity[buildStatus text='created %new.name% image=%new.name%:inception']"
             """.trimIndent()
         }

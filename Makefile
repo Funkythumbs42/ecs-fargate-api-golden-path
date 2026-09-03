@@ -82,7 +82,7 @@ new-service:
 	./scripts/new-service.sh $(NAME)
 
 # NAME=orders-api make inception
-# PORT=8080 PRESET=small
+# PORT=8080 PRESET=small GIT_MODE=this-repo|create|existing GIT_REPO=owner/name
 inception:
 	@test -n "$(NAME)" || (echo "NAME is required, e.g. make inception NAME=orders-api" >&2; exit 1)
-	./scripts/inception.sh $(NAME) $(or $(PORT),8080) $(or $(PRESET),small) $(HOST)
+	GIT_MODE=$(or $(GIT_MODE),this-repo) GIT_REPO=$(GIT_REPO) ./scripts/inception.sh $(NAME) $(or $(PORT),8080) $(or $(PRESET),small) "$(HOST)" $(or $(GIT_MODE),this-repo) "$(GIT_REPO)"

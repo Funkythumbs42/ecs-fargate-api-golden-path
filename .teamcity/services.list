@@ -1,3 +1,6 @@
-# One service name per line. The factory build "new-api" appends here.
-# Root settings.kts turns each line into a TeamCity subproject (pipelines).
+# One service per line: name, optionally followed by a GitHub URL.
+#   example-api
+#   orders-api https://github.com/org/orders-api.git
+# Root settings.kts turns each name into a TeamCity subproject (pipelines).
+# The URL is a pointer (create/existing from new-api). CI still runs from this factory repo.
 example-api
